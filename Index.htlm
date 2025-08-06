@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport"
+    content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <title>Caisson Calculator v13</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f4f4f4 }
+    #calculator,#resultsPage {
+      max-width:360px; margin:0 auto; background:#fff;
+      border-radius:8px; padding:16px;
+      box-shadow:0 2px 8px rgba(0,0,0,0.2);
+    }
+    .display {
+      background:#222; color:#0f0; font-size:28px;
+      padding:12px; border-radius:4px;
+      text-align:right; margin-bottom:12px;
+      height:48px; overflow-x:auto;
+    }
+    .calc-buttons {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:8px;
+    }
+    .calc-buttons button {
+      font-size:20px; padding:16px;
+      border:none; border-radius:6px;
+      background:#444; color:#fff; cursor:pointer;
+    }
+    .calc-buttons button.operator { background:orange; color:#000 }
+    .calc-buttons button.equal    { background:lime;   color:#000 }
+    .clear-buttons {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      gap:8px; margin-top:12px;
+    }
+    .clear-buttons button {
+      font-size:16px; padding:12px;
+      border:none; border-radius:6px; cursor:pointer;
+    }
+    .clear-buttons button.clear { background:#c00; color:#fff }
+    .clear-buttons button.unit  { background:#1e90ff; color:#fff }
+    .func-buttons {
+      display:grid; grid-template-columns:repeat(3,1fr);
+      gap:8px; margin-top:12px;
+    }
+    .func-buttons button {
+      font-size:16px; padding:12px;
+      border:none; border-radius:6px;
+      background:#9370db; color:#fff; cursor:pointer;
+    }
+    .func-buttons button.view {
+      grid-column:span 3; background:lime; color:#000;
+    }
+    #resultsPage { display:none }
+    .result { margin:8px 0; font-size:16px }
+    .result span { font-weight:bold }
+    #resultsPage button {
+      margin-top:16px; padding:12px; width:100%;
+      font-size:18px; border:none; border-radius:6px;
+      background:#444; color:#fff; cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div id="calculator">
+  <div class="display" id="display">0</div>
+
+  <!-- keypad -->
+  <div class="calc-buttons">
+    <button onclick="press('7')">7</button>
+    <button onclick="press('8')">8</button>
+    <button onclick="press('9')">9</button>
+    <button class="operator" onclick="press('/')">÷</button>
+    <button onclick="press('4')">4</button>
+    <button onclick="press('5')">5</button>
+    <button onclick="press('6')">6</button>
+    <button class="operator" onclick="press('*')">×</button>
+    <button onclick="press('1')">1</button>
+    <button onclick="press('2')">2</button>
+    <button onclick="press('3')">3</button>
+    <button class="operator" onclick="press('-')">−</button>
+    <button onclick="press('0')">0</button>
+    <button onclick="press('.')">.</button>
+    <button class="equal" onclick="calculate()">=</button>
+    <button class="operator" onclick="press('+')">+</button>
+  </div>
+
+  <!-- clear & units -->
+  <div class="clear-buttons">
+    <button class="clear" onclick="clearEntry()">C</button>
+    <button class="clear" onclick="clearAll()">CE</button>
+    <button class="unit" onclick="storeFeet()">Feet</button>
+    <button class="unit" onclick="storeInch()">Inch</button>
+  </div>
+
+  <!-- inputs -->
+  <div class="func-buttons">
+    <button onclick="storeVal('Top of Casing')">Top Casing</button>
+    <button onclick="storeVal('Cut to Top of Shaft')">Cut to Shaft</button>
+    <button onclick="storeVal('Shaft Diameter')">Shaft Dia</button>
+    <button onclick="storeVal('TOC to BOS')">TOC→BOS</button>
+    <button onclick="toggleVal('Rock Socket')">Rock Socket?</button>
+    <button onclick="storeVal('Rock Socket Diameter')">Socket Dia</button>
+    <button onclick="storeVal('Rock Socket Depth')">Socket Depth</button>
+    <button onclick="toggleVal('Belled Shaft')">Belled Shaft?</button>
+    <button onclick="storeVal('Belled Shaft Angle')">Bell Angle</button>
+    <button onclick="storeVal('Belled Shaft Diameter')">Bell Dia</button>
+    <button class="view" onclick="showResults()">View Results</button>
+  </div>
+</div>
+
+<div id="resultsPage">
+  <h2>Results</h2>
+  <div class="result">Top Casing Elev.: <span id="resTop"></span></div>
+  <div class="result">Cut to Shaft: <span id="resCut"></span> ft</div>
+  <div class="result">Top Shaft Elev.: <span id="resTopShaft"></span></div>
+  <div class="result">Bottom Elev.: <span id="resBottomElev"></span></div>
+  <div class="result">Cage Length: <span id="resCage"></span> ft</div>
+  <div class="result">Rebar Cage Length: <span id="resCageTotal"></span> ft</div>
+
+  <div class="result">Shaft Dia: <span id="resDiameter"></span></div>
+  <div class="result">TOC→BOS: <span id="resTOCBOS"></span></div>
+
+  <div class="result">Rock Socket: <span id="resSocket"></span></div>
+  <div class="result">Socket Dia: <span id="resSocketDia"></span></div>
+  <div class="result">Socket Depth: <span id="resSocketDepth"></span></div>
+
+  <div class="result">Belled Shaft: <span id="resBell"></span></div>
+  <div class="result">Bell Angle: <span id="resBellAngle"></span>°</div>
+  <div class="result">Bell Dia: <span id="resBellDia"></span></div>
+
+  <div class="result">Main Vol.: <span id="resMainVol"></span> yd³</div>
+  <div class="result">Socket Vol.: <span id="resSocketVol"></span> yd³</div>
+  <div class="result">Bell Vol.: <span id="resBellVol"></span> yd³</div>
+  <div class="result">Total Vol.: <span id="resTotalVol"></span> yd³</div>
+  <button onclick="goBack()">Back</button>
+</div>
+
+<script>
+  let displayVal="", feet="", inch="", store={};
+
+  function press(v){ displayVal+=v; updateDisplay(); }
+  function calculate(){ try{ displayVal=eval(displayVal).toString() }catch{ displayVal="Error" } updateDisplay() }
+  function clearEntry(){ displayVal=""; updateDisplay() }
+  function clearAll(){ displayVal=""; feet=""; inch=""; store={}; updateDisplay() }
+  function storeFeet(){ feet=displayVal; displayVal=""; updateDisplay() }
+  function storeInch(){ inch=displayVal; displayVal=""; updateDisplay() }
+
+  function storeVal(label){
+    const f=parseFloat(feet||"0"), i=parseFloat(inch||"0");
+    store[label]=(f + i/12).toFixed(2);
+    feet=""; inch=""; displayVal=""; updateDisplay();
+  }
+  function toggleVal(label){
+    store[label]= store[label]==="Yes"?"No":"Yes";
+    document.getElementById("display").innerText= label+": "+store[label];
+  }
+  function updateDisplay(){
+    const ft=feet?feet+"' ":"", inc=inch?inch+'\" ':"";
+    document.getElementById("display").innerText=(ft+inc+displayVal).trim()||"0";
+  }
+
+  function showResults(){
+    document.getElementById("calculator").style.display="none";
+    document.getElementById("resultsPage").style.display="block";
+
+    const toc=parseFloat(store["Top of Casing"])||0,
+          cut=parseFloat(store["Cut to Top of Shaft"])||0,
+          bos=parseFloat(store["TOC to BOS"])||0,
+          dia=parseFloat(store["Shaft Diameter"])||0;
+
+    const topShaft=(toc - cut).toFixed(2),
+          bottom=(toc - bos).toFixed(2),
+          cage=(topShaft - bottom).toFixed(2);
+
+    // include rock socket depth in rebar cage length
+    const rsDepth=parseFloat(store["Rock Socket Depth"])||0;
+    const cageTotal = store["Rock Socket"]==="Yes"
+      ? (parseFloat(cage) + rsDepth).toFixed(2)
+      : cage;
+
+    // volumes
+    const mainVol = Math.PI*(dia/2)**2*cage/27;
+    let sockVol=0, bellVol=0;
+    if(store["Rock Socket"]==="Yes"){
+      const rsDia=parseFloat(store["Rock Socket Diameter"])||0;
+      sockVol = Math.PI*(rsDia/2)**2*rsDepth/27;
+    }
+    if(store["Belled Shaft"]==="Yes"){
+      const bellDia=parseFloat(store["Belled Shaft Diameter"])||0,
+            angleRad=parseFloat(store["Belled Shaft Angle"])*Math.PI/180,
+            height=((bellDia - dia)/2)/Math.tan(angleRad);
+      bellVol = Math.PI*((bellDia/2)**2 - (dia/2)**2)*height/27;
+    }
+    const totalVol = (mainVol + sockVol + bellVol).toFixed(2);
+
+    // populate
+    document.getElementById("resTop").innerText=toc.toFixed(2);
+    document.getElementById("resCut").innerText=cut.toFixed(2);
+    document.getElementById("resTopShaft").innerText=topShaft;
+    document.getElementById("resBottomElev").innerText=bottom;
+    document.getElementById("resCage").innerText=cage;
+    document.getElementById("resCageTotal").innerText=cageTotal;
+
+    document.getElementById("resDiameter").innerText=dia.toFixed(2);
+    document.getElementById("resTOCBOS").innerText=bos.toFixed(2);
+
+    document.getElementById("resSocket").innerText=store["Rock Socket"]||"--";
+    document.getElementById("resSocketDia").innerText=store["Rock Socket Diameter"]||"--";
+    document.getElementById("resSocketDepth").innerText=rsDepth||"--";
+    document.getElementById("resSocketVol").innerText=sockVol.toFixed(2);
+
+    document.getElementById("resBell").innerText=store["Belled Shaft"]||"--";
+    document.getElementById("resBellAngle").innerText=store["Belled Shaft Angle"]||"--";
+    document.getElementById("resBellDia").innerText=store["Belled Shaft Diameter"]||"--";
+    document.getElementById("resBellVol").innerText=bellVol.toFixed(2);
+
+    document.getElementById("resMainVol").innerText=mainVol.toFixed(2);
+    document.getElementById("resTotalVol").innerText=totalVol;
+  }
+
+  function goBack(){
+    document.getElementById("resultsPage").style.display="none";
+    document.getElementById("calculator").style.display="block";
+  }
+</script>
+</body>
+</html>
