@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport"
     content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-  <title>Caisson Calculator v13</title>
+  <title>Caisson Calculator v14</title>
   <style>
     body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f4f4f4 }
     #calculator,#resultsPage {
@@ -104,7 +104,7 @@
     <button onclick="storeVal('Rock Socket Diameter')">Socket Dia</button>
     <button onclick="storeVal('Rock Socket Depth')">Socket Depth</button>
     <button onclick="toggleVal('Belled Shaft')">Belled Shaft?</button>
-    <button onclick="storeVal('Belled Shaft Angle')">Bell Angle</button>
+    <button onclick="storeAngle('Belled Shaft Angle')">Bell Angle</button>
     <button onclick="storeVal('Belled Shaft Diameter')">Bell Dia</button>
     <button class="view" onclick="showResults()">View Results</button>
   </div>
@@ -118,18 +118,16 @@
   <div class="result">Bottom Elev.: <span id="resBottomElev"></span></div>
   <div class="result">Cage Length: <span id="resCage"></span> ft</div>
   <div class="result">Rebar Cage Length: <span id="resCageTotal"></span> ft</div>
-
   <div class="result">Shaft Dia: <span id="resDiameter"></span></div>
   <div class="result">TOC→BOS: <span id="resTOCBOS"></span></div>
-
   <div class="result">Rock Socket: <span id="resSocket"></span></div>
   <div class="result">Socket Dia: <span id="resSocketDia"></span></div>
   <div class="result">Socket Depth: <span id="resSocketDepth"></span></div>
-
+  <div class="result">Socket Vol.: <span id="resSocketVol"></span> yd³</div>
   <div class="result">Belled Shaft: <span id="resBell"></span></div>
   <div class="result">Bell Angle: <span id="resBellAngle"></span>°</div>
   <div class="result">Bell Dia: <span id="resBellDia"></span></div>
-
+  <div class="result">Bell Vol.: <span id="resBellVol"></span> yd³</div>
   <div class="result">Main Vol.: <span id="resMainVol"></span> yd³</div>
   <div class="result">Socket Vol.: <span id="resSocketVol"></span> yd³</div>
   <div class="result">Bell Vol.: <span id="resBellVol"></span> yd³</div>
@@ -141,23 +139,26 @@
   let displayVal="", feet="", inch="", store={};
 
   function press(v){ displayVal+=v; updateDisplay(); }
-  function calculate(){ try{ displayVal=eval(displayVal).toString() }catch{ displayVal="Error" } updateDisplay() }
-  function clearEntry(){ displayVal=""; updateDisplay() }
-  function clearAll(){ displayVal=""; feet=""; inch=""; store={}; updateDisplay() }
-  function storeFeet(){ feet=displayVal; displayVal=""; updateDisplay() }
-  function storeInch(){ inch=displayVal; displayVal=""; updateDisplay() }
+  function calculate(){ try{ displayVal=eval(displayVal).toString(); }catch{ displayVal="Error"; } updateDisplay(); }
+  function clearEntry(){ displayVal=""; updateDisplay(); }
+  function clearAll(){ displayVal=""; feet=""; inch=""; store={}; updateDisplay(); }
+  function storeFeet(){ feet=displayVal; displayVal=""; updateDisplay(); }
+  function storeInch(){ inch=displayVal; displayVal=""; updateDisplay(); }
 
   function storeVal(label){
-    const f=parseFloat(feet||"0"), i=parseFloat(inch||"0");
-    store[label]=(f + i/12).toFixed(2);
-    feet=""; inch=""; displayVal=""; updateDisplay();
+    const f=parseFloat(feet||"0"), i=parseFloat(inch||"0"), v=(f + i/12).toFixed(2);
+    store[label]=v; feet=""; inch=""; displayVal=""; updateDisplay();
+  }
+  function storeAngle(label){
+    const v=(parseFloat(displayVal)||0).toFixed(2);
+    store[label]=v; displayVal=""; feet=""; inch=""; updateDisplay();
   }
   function toggleVal(label){
-    store[label]= store[label]==="Yes"?"No":"Yes";
-    document.getElementById("display").innerText= label+": "+store[label];
+    store[label]=store[label]==="Yes"?"No":"Yes";
+    document.getElementById("display").innerText=label+": "+store[label];
   }
   function updateDisplay(){
-    const ft=feet?feet+"' ":"", inc=inch?inch+'\" ':"";
+    const ft=feet?feet+"' ":"", inc=inch?inch+'" ':"";
     document.getElementById("display").innerText=(ft+inc+displayVal).trim()||"0";
   }
 
@@ -170,53 +171,48 @@
           bos=parseFloat(store["TOC to BOS"])||0,
           dia=parseFloat(store["Shaft Diameter"])||0;
 
-    const topShaft=(toc - cut).toFixed(2),
-          bottom=(toc - bos).toFixed(2),
-          cage=(topShaft - bottom).toFixed(2);
+    const topShaft=(toc-cut).toFixed(2),
+          bottom=(toc-bos).toFixed(2),
+          cage=(topShaft-bottom).toFixed(2),
+          rsDepth=parseFloat(store["Rock Socket Depth"])||0,
+          cageTotal=(store["Rock Socket"]==="Yes"
+            ? (parseFloat(cage)+rsDepth).toFixed(2)
+            : cage);
 
-    // include rock socket depth in rebar cage length
-    const rsDepth=parseFloat(store["Rock Socket Depth"])||0;
-    const cageTotal = store["Rock Socket"]==="Yes"
-      ? (parseFloat(cage) + rsDepth).toFixed(2)
-      : cage;
-
-    // volumes
-    const mainVol = Math.PI*(dia/2)**2*cage/27;
-    let sockVol=0, bellVol=0;
+    const mainVol=Math.PI*(dia/2)**2*cage/27;
+    let sockVol=0;
     if(store["Rock Socket"]==="Yes"){
       const rsDia=parseFloat(store["Rock Socket Diameter"])||0;
-      sockVol = Math.PI*(rsDia/2)**2*rsDepth/27;
+      sockVol=Math.PI*(rsDia/2)**2*rsDepth/27;
     }
+    let bellVol=0;
     if(store["Belled Shaft"]==="Yes"){
       const bellDia=parseFloat(store["Belled Shaft Diameter"])||0,
             angleRad=parseFloat(store["Belled Shaft Angle"])*Math.PI/180,
-            height=((bellDia - dia)/2)/Math.tan(angleRad);
-      bellVol = Math.PI*((bellDia/2)**2 - (dia/2)**2)*height/27;
+            height=((bellDia-dia)/2)/Math.tan(angleRad);
+      bellVol=Math.PI*((bellDia/2)**2 - (dia/2)**2)*height/27;
     }
-    const totalVol = (mainVol + sockVol + bellVol).toFixed(2);
+    const totalVol=(mainVol+sockVol+bellVol).toFixed(2);
 
-    // populate
     document.getElementById("resTop").innerText=toc.toFixed(2);
     document.getElementById("resCut").innerText=cut.toFixed(2);
     document.getElementById("resTopShaft").innerText=topShaft;
     document.getElementById("resBottomElev").innerText=bottom;
     document.getElementById("resCage").innerText=cage;
     document.getElementById("resCageTotal").innerText=cageTotal;
-
     document.getElementById("resDiameter").innerText=dia.toFixed(2);
     document.getElementById("resTOCBOS").innerText=bos.toFixed(2);
-
     document.getElementById("resSocket").innerText=store["Rock Socket"]||"--";
     document.getElementById("resSocketDia").innerText=store["Rock Socket Diameter"]||"--";
-    document.getElementById("resSocketDepth").innerText=rsDepth||"--";
+    document.getElementById("resSocketDepth").innerText=store["Rock Socket Depth"]||"--";
     document.getElementById("resSocketVol").innerText=sockVol.toFixed(2);
-
     document.getElementById("resBell").innerText=store["Belled Shaft"]||"--";
     document.getElementById("resBellAngle").innerText=store["Belled Shaft Angle"]||"--";
     document.getElementById("resBellDia").innerText=store["Belled Shaft Diameter"]||"--";
     document.getElementById("resBellVol").innerText=bellVol.toFixed(2);
-
     document.getElementById("resMainVol").innerText=mainVol.toFixed(2);
+    document.getElementById("resSocketVol").innerText=sockVol.toFixed(2);
+    document.getElementById("resBellVol").innerText=bellVol.toFixed(2);
     document.getElementById("resTotalVol").innerText=totalVol;
   }
 
@@ -225,5 +221,6 @@
     document.getElementById("calculator").style.display="block";
   }
 </script>
+
 </body>
 </html>
